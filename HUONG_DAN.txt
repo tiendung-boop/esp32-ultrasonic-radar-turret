@@ -1,0 +1,80 @@
+HUONG DAN SU DUNG - RADAR SIEU AM ESP32 & SUNG LASER PAN-TILT
+=============================================================
+
+1) CHUAN BI PHAN MEM (lam 1 lan)
+--------------------------------
+- Arduino IDE: File -> Preferences -> "Additional Boards Manager URLs" them:
+    https://raw.githubusercontent.com/espressif/arduino-esp32/gh-pages/package_esp32_index.json
+  Tools -> Board -> Boards Manager -> tim "esp32" -> Install.
+- Library Manager: cai thu vien "ESP32Servo" (KHONG dung Servo.h cua AVR).
+- Driver USB: CP210x hoac CH340 neu Windows khong nhan cong COM.
+- Python 3.12:  pip install pygame pyserial
+
+2) DAU DAY
+----------
+  Servo pan (tin hieu) ........ GPIO18
+  Servo tilt (sung laser) ..... GPIO19
+  Laser (sung laser) .......... GPIO21 (qua transistor/MOSFET neu > 20mA)
+  HC-SR04 TRIG ................ GPIO25
+  HC-SR04 ECHO ................ GPIO26 QUA CAU CHIA AP:
+                                  ECHO --1kOhm-- GPIO26 --2kOhm-- GND
+                                (ECHO ra 5V, chan ESP32 chi chiu 3.3V)
+  HC-SR04 VCC -> 5V, GND chung voi ESP32 va nguon servo.
+
+- Servo dung NGUON 5V RIENG (>= 2A neu MG996R/MG995), KHONG lay tu chan
+  5V/3.3V cua ESP32. Noi chung GND.
+- Them tu hoa 470-1000uF sat nguon servo, tu gom 100nF sat VCC HC-SR04.
+- Khi ESP32 cap nguon qua USB: chi noi GND voi nguon ngoai, khong noi 5V
+  ngoai vao VIN.
+
+3) CHON SKETCH
+--------------
+  UltrasonicRadar/        radar quet 15-165 do, servo SG90/MG90S
+  UltrasonicRadarMG995/   radar quet cho servo MG995 (chinh SERVO_MIN_US/
+                          SERVO_MAX_US, doi servo on dinh, lay trung vi 3 lan do)
+  UltrasonicDistance/     chi HC-SR04 dung yen, khong servo (thu cam bien truoc)
+  ServoCalibration/       go do rong xung (vd 1500) qua Serial Monitor de kiem
+                          tra servo la loai giu goc hay quay lien tuc 360 do
+                          (MG995 hang nhai hay la loai 360 -> KHONG dung duoc)
+  LaserTurretControl/     sung laser pan-tilt nhan lenh goc qua Serial
+
+Nap: mo file .ino -> Tools -> Board "ESP32 Dev Module" -> Port COMx -> Upload.
+
+4) CHAY MAN HINH RADAR TREN PC
+------------------------------
+  python RadarDisplay/radar_display.py --port COM5
+  python RadarDisplay/radar_display.py --demo          (gia lap, khong can mach)
+
+  Tuy chon: --range 200   tam hien thi ban dau (cm)
+            --persist 6   so giay diem do mo dan
+            --mirror      dao trai/phai neu servo gan nguoc
+  Phim:     + / - hoac cuon chuot: doi tam | C: xoa | Esc: thoat
+  Huong:    0 do ben phai, 90 do chinh dien, 180 do ben trai.
+
+  Ban khong servo (UltrasonicDistance) thi dung:
+  python RadarDisplay/distance_display.py --port COM5
+  (Phai ghep dung cap sketch - script: 2 giao thuc khac nhau.)
+
+5) GIAO THUC SERIAL (115200 baud, moi dong ket thuc \n)
+------------------------------------------------------
+  Radar quet   ESP32 -> PC:  <goc>,<khoang_cach_cm>     vd 90,123.4
+  Chi do xa    ESP32 -> PC:  <khoang_cach_cm>
+               (-1 = khong co echo / ngoai tam 2-400cm)
+  Sung laser   PC -> ESP32:  <pan>,<tilt>,<laser 0|1>   vd 90,45,1
+               STOP = dung khan cap (detach servo, tat laser)
+               Qua 2 giay khong co lenh moi -> tu tat laser.
+
+6) AN TOAN
+----------
+- Chi dung laser cong suat thap (< 5mW, Class 1/2).
+- KHONG chieu laser vao mat nguoi, xe co, may bay.
+- Chinh PAN_MIN/MAX, TILT_MIN/MAX dung theo khung co khi that de servo
+  khong bi ket/chay.
+
+7) LOI THUONG GAP
+-----------------
+- So do nhay lung tung: thieu tu loc nguon hoac servo keo sut ap -> them tu,
+  hoac cap HC-SR04 tu nguon rieng.
+- Servo quay mai khong dung: servo loai 360 do -> kiem tra bang ServoCalibration.
+- Khong thay cong COM: cai driver CP210x/CH340; cong COM3/COM4 tren may nay
+  la Bluetooth, man hinh radar tu bo qua.
